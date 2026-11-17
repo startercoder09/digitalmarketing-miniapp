@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Digital Маркетинг</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<style>
+:root{--bg:#f3f6fa;--card:#fff;--ink:#14202e;--mute:#6b7a8c;--line:#e1e8f0;--acc:#1f8fe5;--acc-ink:#fff;--off:#e9eef4}
+@media (prefers-color-scheme:dark){:root{--bg:#10161e;--card:#18212c;--ink:#eaf1f8;--mute:#8a9bad;--line:#243141;--acc:#3aa0f0;--acc-ink:#06121e;--off:#1d2835}}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.4 -apple-system,"SF Pro Text","Segoe UI",Roboto,sans-serif;padding:16px 16px 110px}
+h1{font-size:26px;margin:8px 0 4px;letter-spacing:-.02em}
+.sub{color:var(--mute);margin:0 0 18px}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.cat{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:16px;text-align:left;font:inherit;color:inherit;min-height:104px;display:flex;flex-direction:column;justify-content:space-between}
+.cat b{font-size:17px}.cat small{color:var(--mute)}
+.cat.on{border-color:var(--acc)}.cat.off{background:var(--off);opacity:.65}
+.tabs{display:flex;gap:6px;margin:0 0 14px;overflow-x:auto}
+.tab{flex:none;border:1px solid var(--line);background:var(--card);color:var(--ink);padding:8px 14px;border-radius:999px;font:inherit;font-size:15px}
+.tab.sel{background:var(--acc);color:var(--acc-ink);border-color:var(--acc)}
+.list{background:var(--card);border:1px solid var(--line);border-radius:16px;overflow:hidden}
+.row{display:flex;justify-content:space-between;align-items:center;gap:10px;width:100%;padding:14px 16px;border:0;border-bottom:1px solid var(--line);background:none;color:inherit;font:inherit;text-align:left}
+.row:last-child{border-bottom:0}.row small{display:block;color:var(--mute);font-size:13px}
+.row i{color:var(--mute);font-style:normal}
+label{display:block;font-size:14px;color:var(--mute);margin:16px 0 6px}
+input,textarea{width:100%;padding:13px 14px;border-radius:12px;border:1px solid var(--line);background:var(--card);color:var(--ink);font:inherit}
+input:focus,textarea:focus{outline:2px solid var(--acc);outline-offset:0}
+.chips{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+.chip{border:1px solid var(--line);background:var(--card);color:var(--ink);padding:6px 12px;border-radius:999px;font:inherit;font-size:14px}
+.sum{margin-top:18px;padding:14px 16px;background:var(--card);border:1px solid var(--line);border-radius:16px;display:flex;justify-content:space-between;font-size:18px}
+.note{color:var(--mute);font-size:13px;margin-top:12px}
+.err{color:#d6453d;font-size:13px;margin-top:6px;min-height:16px}
+.btn{position:fixed;left:16px;right:16px;bottom:calc(16px + env(safe-area-inset-bottom,0px));padding:15px;border:0;border-radius:14px;background:var(--acc);color:var(--acc-ink);font:600 17px inherit;font-family:inherit}
+.btn:disabled{opacity:.5}
+.back{border:0;background:none;color:var(--acc);font:inherit;padding:4px 0 10px}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<script>
+const tg=window.Telegram?.WebApp;tg?.ready();tg?.expand();
+// Цены — ₽ за 1000. Подставьте свои.
+const S=(name,price,min=100,max=100000,ask)=>({name,price,min,max,ask});
+const CATALOG={
+ "Подписчики":[S("Россия",150),S("Обычные",90),S("Микс стран: RU / UA / KZ / AM / UZ / US",110),S("Держатся Online",180),S("Живые с рекламы",250),S("Таргетированные",300),S("Для продвижения групп",130),S("Украина",160),S("Арабские",170),S("Подписчики + Авто просмотры (Россия / KZ…)",260,100,50000,"Сколько постов с авто-просмотрами?")],
+ "Просмотры":[S("Обычные",20,100,1000000),S("Авто просмотры",25,100,1000000,"Количество будущих постов?"),S("Умные для Tgstat и Telemetr",60,100,1000000),S("Россия — на несколько постов",45,100,1000000,"Сколько постов?"),S("Выбор скорости в минуту",35,100,1000000,"Желаемая скорость в минуту"),S("На прошлые посты",30,100,1000000,"Сколько последних постов?"),S("Для закрытых каналов — на будущие",50,100,1000000,"Сколько постов?"),S("Таргетированные — живые",120,100,500000)],
+ "Реакции":[S("Реакции",60,50,100000,"Какие эмодзи? (например 👍 🔥)"),S("Реакции + Просмотры",70,50,100000,"Какие эмодзи?"),S("Для закрытых каналов — база #1",90,50,50000,"Какие эмодзи?"),S("Для закрытых каналов — база #2",100,50,50000,"Какие эмодзи?")]
+};
+const CATS=[["Telegram","Подписчики, просмотры, реакции",1],["Instagram","Скоро",0],["YouTube","Скоро",0],["TikTok","Скоро",0]];
+let st={v:"home",tab:"Подписчики",svc:null,link:"",qty:"",note:""};
+const $=s=>document.querySelector(s),fmt=n=>n.toLocaleString("ru-RU");
+const price=()=>st.svc&&+st.qty?Math.round(st.svc.price*st.qty/1000*100)/100:0;
+const esc=s=>s.replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+function go(v){st.v=v;render();scrollTo(0,0)}
+function render(){
+ const a=$("#app");tg?.MainButton.hide();
+ if(st.v==="home"){
+  a.innerHTML=`<h1>Продвижение в соцсетях</h1><p class="sub">Выберите площадку. Заказ уточнит менеджер.</p><div class="grid">${CATS.map((c,i)=>`<button class="cat ${c[2]?"on":"off"}" data-i="${i}"><b>${c[0]}</b><small>${c[1]}</small></button>`).join("")}</div>`;
+  a.querySelectorAll(".cat").forEach(b=>b.onclick=()=>{CATS[b.dataset.i][2]?go("list"):tg?.showAlert("Эта площадка скоро появится")});
+ }else if(st.v==="list"){
+  a.innerHTML=`<button class="back" id="b">‹ Площадки</button><h1>Telegram</h1><div class="tabs">${Object.keys(CATALOG).map(t=>`<button class="tab ${t===st.tab?"sel":""}" data-t="${t}">${t}</button>`).join("")}</div><div class="list">${CATALOG[st.tab].map((s,i)=>`<button class="row" data-i="${i}"><span>${esc(s.name)}<small>от ${fmt(s.min)} · ${s.price} ₽ за 1000</small></span><i>›</i></button>`).join("")}</div>`;
+  $("#b").onclick=()=>go("home");
+  a.querySelectorAll(".tab").forEach(b=>b.onclick=()=>{st.tab=b.dataset.t;render()});
+  a.querySelectorAll(".row").forEach(b=>b.onclick=()=>{st.svc=CATALOG[st.tab][b.dataset.i];st.qty="";st.note="";go("form")});
+ }else{
+  const s=st.svc,q=[s.min,s.min*5,s.min*10,s.min*50].filter(x=>x<=s.max);
+  a.innerHTML=`<button class="back" id="b">‹ Назад</button><h1>${esc(st.tab)}</h1><p class="sub">${esc(s.name)}</p>
+  <label for="l">Ссылка на канал или пост</label><input id="l" placeholder="https://t.me/…" value="${esc(st.link)}" autocapitalize="off">
+  <label for="q">Количество (${fmt(s.min)} – ${fmt(s.max)})</label><input id="q" type="number" inputmode="numeric" value="${st.qty}"><div class="chips">${q.map(x=>`<button class="chip" data-q="${x}">${fmt(x)}</button>`).join("")}</div>
+  ${s.ask?`<label for="n">${esc(s.ask)}</label>`:`<label for="n">Пожелания (необязательно)</label>`}<textarea id="n" rows="2">${esc(st.note)}</textarea>
+  <div class="err" id="e"></div><div class="sum"><span>Ориентировочно</span><b id="p"></b></div>
+  <p class="note">Цена предварительная — оплату и срок подтвердит менеджер. Когда раскрутка начнётся, отменить её уже нельзя.</p>
+  <button class="btn" id="go">Создать заказ</button>`;
+  const upd=()=>{$("#p").textContent=fmt(price())+" ₽"};upd();
+  $("#b").onclick=()=>go("list");
+  $("#l").oninput=e=>st.link=e.target.value.trim();
+  $("#q").oninput=e=>{st.qty=e.target.value;upd()};
+  $("#n").oninput=e=>st.note=e.target.value;
+  a.querySelectorAll(".chip").forEach(c=>c.onclick=()=>{st.qty=c.dataset.q;$("#q").value=st.qty;upd()});
+  $("#go").onclick=submit;
+ }
+}
+function submit(){
+ const s=st.svc,n=+st.qty,e=$("#e");
+ if(!/^(https?:\/\/)?(t\.me|telegram\.me)\/|^@\w{4,}/i.test(st.link)){e.textContent="Укажите ссылку вида https://t.me/… или @username";return}
+ if(!(n>=s.min&&n<=s.max)){e.textContent=`Количество — от ${fmt(s.min)} до ${fmt(s.max)}`;return}
+ const d={platform:"Telegram",group:st.tab,service:s.name,link:st.link,qty:n,price:price(),note:st.note};
+ if(tg)tg.sendData(JSON.stringify(d));else alert(JSON.stringify(d,null,1));
+}
+tg?.BackButton.onClick(()=>go(st.v==="form"?"list":"home"));
+render();
+</script>
+</body>
+</html>
